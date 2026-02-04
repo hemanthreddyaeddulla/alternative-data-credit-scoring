@@ -211,16 +211,18 @@ __marimo__/
 # ===========================================
 
 # Data files (large CSV files)
-data/data_added_now/
-data/preprocessed_data_sample_1pct/
-data/preprocessed_data_sample_1pct.zip
-data/*.pkl
+data/
 
 # Model files (large pickle files)
 models/
 
 # Artifacts (generated outputs)
 artifact/
+
+# Internal documentation (not for public)
+notebooks/
+docs/
+README_INTERNAL.md
 
 # Root level generated files
 preprocessed_data.pkl
