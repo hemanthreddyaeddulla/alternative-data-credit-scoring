@@ -1,40 +1,41 @@
-# Data & Utility Packages
+# =============================================================================
+# Credit Risk Alternative Data - Requirements
+# =============================================================================
+# This file lists all Python dependencies needed to run the credit risk pipeline.
+# Install with: pip install -r requirements.txt
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Data Processing & Utilities
+# -----------------------------------------------------------------------------
 pandas>=2.0.0
 numpy>=1.24.0
 joblib>=1.3.0
-pickle5; python_version<"3.8"  # only if needed for older Python
-gc
-os
-datetime
+scipy>=1.11.0
 
-# System & Warnings
-warnings
-typing-extensions>=4.7.0
-
+# -----------------------------------------------------------------------------
 # Visualization
+# -----------------------------------------------------------------------------
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
-# Machine Learning - Core (scikit-learn)
+# -----------------------------------------------------------------------------
+# Machine Learning - Core
+# -----------------------------------------------------------------------------
+# scikit-learn includes: LogisticRegression, LinearRegression, SGDClassifier,
+# DecisionTreeClassifier, RandomForestClassifier, ExtraTreesClassifier,
+# GradientBoostingClassifier, StandardScaler, LabelEncoder, train_test_split
 scikit-learn>=1.3.0
+
+# SMOTE for handling imbalanced classes
 imbalanced-learn>=0.11.0
 
-# Tree & Ensemble Models
-RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, DecisionTreeClassifier
-Supported by scikit-learn
-(no extra installation needed)
-
-# Linear & SVM Models
-LogisticRegression, LinearRegression, SGDClassifier, SVC
-All included in scikit-learn
-
-# Gradient Boosting Frameworks
+# -----------------------------------------------------------------------------
+# Gradient Boosting Framework
+# -----------------------------------------------------------------------------
 lightgbm>=4.0.0
 
-# Deep Learning (TensorFlow / Keras)
-tensorflow>=2.13.0
-keras>=2.13.0
-
-# Optional Dependencies
-scipy>=1.11.0
-pandas[performance]>=2.0.0
+# -----------------------------------------------------------------------------
+# Optional: Type hints support for older Python
+# -----------------------------------------------------------------------------
+typing-extensions>=4.7.0

@@ -205,3 +205,24 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ===========================================
+# Project-specific ignores
+# ===========================================
+
+# Data files (large CSV files)
+data/data_added_now/
+data/preprocessed_data_sample_1pct/
+data/preprocessed_data_sample_1pct.zip
+data/*.pkl
+
+# Model files (large pickle files)
+models/
+
+# Artifacts (generated outputs)
+artifact/
+
+# Root level generated files
+preprocessed_data.pkl
+preprocessor.pkl
+nul

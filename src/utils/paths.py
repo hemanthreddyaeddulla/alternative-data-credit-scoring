@@ -81,6 +81,20 @@ def timestamped_path(prefix: str, folder: str = ARTIFACT_DIR, ext: str = "csv") 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     return os.path.join(folder, f"{prefix}_{ts}.{ext}")
 
+def data_path(filename: str) -> str:
+    """Return full path for a data file in data_added_now directory."""
+    data_added_dir = os.path.join(DATA_DIR, "data_added_now")
+    return os.path.join(data_added_dir, filename)
+
+def artifact_path(filename: str) -> str:
+    """Return full path for an artifact file."""
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    return os.path.join(ARTIFACT_DIR, filename)
+
+def fig_path(filename: str, ext: str = "png") -> str:
+    """Alias for figure_path for backward compatibility."""
+    return figure_path(filename, ext)
+
 # ----------------------------------------------------------------------------
 # 🔹 Utility printer
 # ----------------------------------------------------------------------------

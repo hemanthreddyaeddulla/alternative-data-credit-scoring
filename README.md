@@ -1,351 +1,333 @@
-# 🏦 Credit Risk Alternative Data
+# Credit Risk Analysis with Alternative Data
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-Active-brightgreen)
-
-> Using windowed features and SMOTE, eleven ML/DL models were evaluated on alternative vs. traditional credit data to predict loan defaults; TabNet, Wide&Deep, and other traditional ML models evaluated financial inclusion for borrowers without credit; and the optimization of the acceptance rate was achieved at a bad rate of 5%.
+A comprehensive credit risk modeling pipeline that compares the predictive power of **traditional credit bureau data** versus **alternative data sources** for predicting loan defaults.
 
 ---
 
-## 📘 Table of Contents
+## Research Objective
 
-1. [Overview](#-overview)
-2. [Research Question](#-research-question)
-3. [Dataset](#-dataset)
-4. [Pipeline Structure](#%EF%B8%8F-pipeline-structure)
-5. [Key Features & Models](#-key-features--models)
-6. [Results & Visualizations](#-results--visualizations)
-7. [Repository Structure](#%EF%B8%8F-repository-structure)
-8. [How to Run](#-how-to-run)
-9. [Dependencies](#-dependencies)
-10. [Documentation](#-documentation)
-11. [Future Work](#-future-work)
-12. [Contact](#-contact)
+> **Can alternative data sources improve credit risk prediction, especially for "thin-file" customers who lack extensive credit history?**
 
 ---
 
-## 🧠 Overview
+## Key Findings
 
-This project investigates how **alternative data (behavioral, transactional, and temporal features)** can improve **credit model fairness and financial inclusion** for thin-file borrowers.
+| Metric | Best Model | Feature Set | Score |
+|--------|------------|-------------|-------|
+| **Overall AUC** | LightGBM | All (381 features) | **0.7742** |
+| **Acceptance Rate @ 5% BR** | LightGBM | All | **84.0%** |
+| **Alternative Only** | Random Forest | Alternative (47 features) | 0.7290 |
+| **Traditional Only** | LightGBM | Traditional (334 features) | 0.7387 |
 
-The analysis compares three feature scenarios:
-- **Traditional-only features** (credit bureau data)
-- **Alternative-only features** (transaction patterns, behavioral data)
-- **Combined features (All)** (traditional + alternative)
+### Key Insight
 
-across **11 machine learning and deep learning models** with metrics including **AUC**, **KS statistic**, and **Approval Rate @ Fixed 5% Bad Rate**.
-
----
-
-## 🎯 Research Question
-
-**Can alternative data sources improve loan approval rates for thin-file borrowers without increasing default risk?**
-
-Key hypotheses tested:
-1. Alternative data provides predictive signal beyond traditional credit scores
-2. Thin-file applicants benefit disproportionately from alternative features
-3. Neural network architectures (TabNet, Wide&Deep) can capture complex feature interactions
+**Alternative data alone (47 features) achieves higher average AUC than traditional data (334 features)**, validating that alternative data provides valuable signals for credit risk assessment, especially for thin-file customers.
 
 ---
 
-## 📊 Dataset
+## Table of Contents
+
+1. [Project Structure](#project-structure)
+2. [Dataset](#dataset)
+3. [Pipeline Overview](#pipeline-overview)
+4. [Models](#models)
+5. [Results](#results)
+6. [Installation & Usage](#installation--usage)
+7. [Documentation](#documentation)
+
+---
+
+## Project Structure
+
+```
+Credit-Risk-Alternative-Data/
+|
++-- run.py                    # Main entry point
++-- requirements.txt          # Python dependencies
++-- README.md                 # This file
+|
++-- data/
+|   +-- data_added_now/       # Raw CSV files (~2.6 GB)
+|   |   +-- application_train.csv    # 307K rows - Main training data
+|   |   +-- bureau.csv               # 1.7M rows - External credit history
+|   |   +-- bureau_balance.csv       # 27M rows - Monthly bureau snapshots
+|   |   +-- previous_application.csv # 1.67M rows - Prior HC applications
+|   |   +-- credit_card_balance.csv  # 3.8M rows - Credit card data
+|   |   +-- POS_CASH_balance.csv     # 10M rows - POS/cash loans
+|   |   +-- installments_payments.csv # 13.6M rows - Payment history
+|   +-- preprocessor.pkl
+|   +-- preprocessed_data_sample_1pct/
+|
++-- src/
+|   +-- __init__.py
+|   +-- utils/
+|   |   +-- __init__.py
+|   |   +-- paths.py              # Path utilities
+|   +-- pipeline/
+|       +-- __init__.py
+|       +-- credit_pipeline.py    # Main orchestrator
+|       +-- data_preprocessor.py  # Data processing
+|       +-- trainer.py            # Model training
+|       +-- custom_models.py      # Custom classifiers
+|       +-- analysis.py           # Thin-file analysis
+|       +-- visualize.py          # Plot generation
+|
++-- models/                   # Saved model files (24 .pkl files)
++-- artifact/                 # Output files
+|   +-- 01_Model_results.csv
+|   +-- 02_model_comparison.png
+|   +-- 03_thin_file_analysis.png
+|   +-- EDA_output/           # EDA visualizations
+|
++-- notebooks/                # Documentation notebooks
+|   +-- 00_Project_Overview.ipynb
+|   +-- 01_Data_Documentation.ipynb
+```
+
+---
+
+## Dataset
+
+### Data Source
+
+**Home Credit Default Risk** dataset - consumer finance data for populations with little or no credit history.
 
 ### Data Schema
 
 ```
-application_{train|test}.csv  (Main table - 307,511 rows)
-├── bureau.csv                (Credit Bureau data - 1.7M records)
-│   └── bureau_balance.csv    (Monthly balance history - 27.3M records)
-├── previous_application.csv  (Previous Home Credit loans - 1.6M records)
-│   ├── POS_CASH_balance.csv  (Monthly balance - POS/Cash loans - 10M records)
-│   ├── credit_card_balance.csv (Monthly balance - Credit cards - 3.8M records)
-│   └── installments_payments.csv (Payment history - 13.6M records)
+application_train.csv (SK_ID_CURR) - 307,511 rows
+    |
+    +-> bureau.csv (1.7M records) - External credit bureau history
+    |       |
+    |       +-> bureau_balance.csv (27.3M records) - Monthly bureau snapshots
+    |
+    +-> previous_application.csv (1.67M records) - Prior Home Credit applications
+            |
+            +-> credit_card_balance.csv (3.8M records) - Credit card data
+            +-> POS_CASH_balance.csv (10M records) - POS/cash loan balances
+            +-> installments_payments.csv (13.6M records) - Payment history
 ```
 
-### Key Tables
+### Data Files
 
-| Source | Description | Size | Key Features |
-|--------|-------------|------|--------------|
-| `application_train.csv` | Main customer application data | 307k rows | Demographics, income, employment, `TARGET` |
-| `bureau.csv` | External credit bureau records | 1.7M records | Credit history from other institutions |
-| `bureau_balance.csv` | Monthly credit bureau balance | 27.3M records | Time-series credit status |
-| `previous_application.csv` | Prior Home Credit applications | 1.6M records | Approval status, loan purpose, contract type |
-| `POS_CASH_balance.csv` | Point-of-sale loan balances | 10M records | Monthly payment tracking |
-| `credit_card_balance.csv` | Credit card monthly data | 3.8M records | Utilization, limits, payment behavior |
-| `installments_payments.csv` | Installment payment history | 13.6M records | On-time vs late payments |
-| `preprocessed_data_sample_1pct.pkl.gz` | 1% sampled preprocessed data | ~30MB | GitHub-friendly version |
+| File | Rows | Size | Description |
+|------|------|------|-------------|
+| `application_train.csv` | 307,511 | 158 MB | Main training data with TARGET |
+| `bureau.csv` | 1.7M | 162 MB | External credit bureau history |
+| `bureau_balance.csv` | 27.3M | 358 MB | Monthly bureau balance snapshots |
+| `previous_application.csv` | 1.67M | 386 MB | Prior Home Credit applications |
+| `credit_card_balance.csv` | 3.8M | 405 MB | Credit card monthly data |
+| `POS_CASH_balance.csv` | 10M | 375 MB | POS/cash loan balances |
+| `installments_payments.csv` | 13.6M | 690 MB | Payment history |
 
-**Data Source:** Home Credit Default Risk (Kaggle-style alternative lending dataset)
-
-**Target Variable:** Binary classification (0 = Repaid on time, 1 = Default)
+**Total:** ~58 million records, ~2.6 GB
 
 ---
 
-## ⚙️ Pipeline Structure
+## Pipeline Overview
 
-| Step | Script | Description |
-|------|--------|-------------|
-| 1️⃣ **EDA** | `src/notebooks/01_EDA.py` | Exploratory data analysis, missingness patterns, distributions |
-| 2️⃣ **Preprocessing** | `src/notebooks/02_Data_Preprocessor.py` | Windowized Yeo-Johnson transformation, encoding, feature engineering |
-| 3️⃣ **Custom Models** | `src/notebooks/03_custom_models.py` | TabNet, Wide&Deep implementations |
-| 4️⃣ **Training** | `src/notebooks/04_trainer.py` | Model fitting, cross-validation, hyperparameter tuning |
-| 5️⃣ **Analysis** | `src/notebooks/05_analysis.py` | Feature importance, SHAP values, diagnostics |
-| 6️⃣ **Visualization** | `src/notebooks/06_visualize.py` | Model comparison charts, thin-file analysis plots |
-| 7️⃣ **Pipeline** | `src/notebooks/07_credit_pipeline.py` | End-to-end sequential execution |
+### High-Level Architecture
 
-**Path Management:** All scripts use centralized configuration via `src/utils/paths.py`
+```
+Raw CSV Files (2.6 GB)
+        |
+        v
++-------------------+
+| Data Preprocessor |  <- Merge, Engineer, Transform, Encode, Split, Balance
++-------------------+
+        |
+        v
++-------------------+
+| Feature Sets      |  <- All (381), Traditional (334), Alternative (47)
++-------------------+
+        |
+        v
++-------------------+
+| Model Trainer     |  <- Train 8 models x 3 feature sets = 24 configurations
++-------------------+
+        |
+        v
++-------------------+
+| Analysis          |  <- Thin-file analysis, Feature set comparison
++-------------------+
+        |
+        v
++-------------------+
+| Visualization     |  <- Generate comparison plots
++-------------------+
+```
+
+### Preprocessing Steps
+
+1. **Load & Merge**: Combine 7 CSV files by SK_ID_CURR
+2. **Feature Engineering**: Create ratios, age, employment features
+3. **Windowizing**: Yeo-Johnson power transformation for skewed features
+4. **Categorical Encoding**: LabelEncoder (binary) or Top-5 One-Hot (multi-category)
+5. **Train/Validation Split**: 80/20 stratified
+6. **SMOTE Balancing**: 50% sampling ratio for class imbalance
+7. **StandardScaler**: Normalize features
+
+### Train/Validation Split
+
+```
+application_train.csv (307,511 rows with TARGET)
+         |
+         +--- 80% ---> Training Set (~246,000 rows)
+         |                    |
+         |                    +---> SMOTE Applied (50% ratio)
+         |                    +---> ~368,000 rows after balancing
+         |
+         +--- 20% ---> Validation Set (~61,500 rows)
+                              +---> NO SMOTE (evaluate on real distribution)
+```
+
+**Note:** `application_test.csv` is NOT used - it has no TARGET column.
 
 ---
 
-## 🧩 Key Features & Models
+## Models
 
-### Feature Engineering Highlights
+### Implemented Models (8 total)
 
-✨ **Advanced Preprocessing:**
-- **Windowized Yeo-Johnson normalization** (handles skewness per feature distribution)
-- **Hybrid categorical encoding** (Label + Frequency encoding)
-- **SMOTE oversampling** for class imbalance (default rate ~8%)
-- **Mutual Information & Random Forest** feature importance ranking
+| Category | Model | Description |
+|----------|-------|-------------|
+| Linear | Linear Regression | Wrapper as classifier |
+| Linear | Logistic Regression | Standard binary classifier |
+| Tree | Decision Tree | Single tree (max_depth=10) |
+| Tree | Random Forest | 100 trees (max_depth=10) |
+| Tree | Gradient Boosting | 100 estimators |
+| Tree | LightGBM | Fast gradient boosting |
+| Tree | Extra Trees | Extremely randomized trees |
+| Other | SVM | SGDClassifier with log_loss |
 
-📊 **Feature Categories:**
-- Traditional: Credit score, income, employment history
-- Alternative: Transaction velocity, payment patterns, behavioral flags
-- Temporal: Recency features, seasonality indicators
+### Feature Sets
 
-### Models Tested
+| Feature Set | Count | Description |
+|-------------|-------|-------------|
+| **All** | 381 | Combined traditional + alternative |
+| **Traditional** | 334 | Standard credit bureau data |
+| **Alternative** | 47 | Non-traditional data sources |
 
-| Category | Algorithms |
-|----------|------------|
-| **Linear** | Logistic Regression, SGDClassifier |
-| **Tree-based** | LightGBM, XGBoost, CatBoost, Random Forest, ExtraTrees |
-| **Neural Networks** | TabNet, Wide&Deep, MLPClassifier |
-
-**Evaluation Metrics:**
-- **AUC-ROC:** Area Under Receiver Operating Characteristic curve
-- **KS Statistic:** Kolmogorov-Smirnov test (discriminatory power)
-- **Acceptance Rate @ 5% Bad Rate:** Business metric for loan approval optimization
-  - Measures how many applicants can be approved while maintaining a fixed 5% default rate
-  - Calculated by finding the probability threshold where predicted bad rate = 5%
-  - Higher acceptance rate = better financial inclusion without increased risk
-- **Thin-file Performance:** Separate AUC calculation for applicants with limited credit history
+**Total Configurations:** 8 models x 3 feature sets = **24 trained models**
 
 ---
 
-## 📈 Results & Visualizations
+## Results
 
-### Key Findings
+### Overall Model Performance (All Features)
 
-🎯 **Best Performing Models:**
+| Rank | Model | AUC | Acceptance Rate |
+|------|-------|-----|-----------------|
+| 1 | **LightGBM** | **0.7742** | **84.0%** |
+| 2 | Gradient Boosting | 0.7659 | 82.7% |
+| 3 | Linear Regression | 0.7632 | 82.5% |
+| 4 | Logistic Regression | 0.7620 | 82.6% |
+| 5 | SVM | 0.7538 | 81.0% |
+| 6 | Extra Trees | 0.7418 | 78.5% |
+| 7 | Random Forest | 0.7403 | 77.8% |
+| 8 | Decision Tree | 0.7034 | 71.9% |
 
-| Model | Feature Set | AUC | Acceptance Rate @ 5% Bad Rate | Thin-File AUC |
-|-------|-------------|-----|-------------------------------|---------------|
-| **LightGBM** | All (Traditional + Alternative) | 0.7823 | 42.3% | 0.7456 |
-| **XGBoost** | All | 0.7801 | 41.8% | 0.7389 |
-| **CatBoost** | All | 0.7789 | 41.2% | 0.7421 |
-| **TabNet** | All | 0.7612 | 40.1% | 0.7523 |
-| **Wide&Deep** | All | 0.7534 | 39.8% | 0.7498 |
+### Feature Set Comparison
 
-📊 **Impact of Alternative Data:**
-
-Comparing **Traditional-only** vs **All features** (Traditional + Alternative):
-
-| Metric | Traditional Only | All Features | Improvement |
-|--------|------------------|--------------|-------------|
-| Average AUC | 0.7234 | 0.7689 | **+6.3%** |
-| Acceptance Rate @ 5% Bad Rate | 34.2% | 41.1% | **+20.2%** |
-| Thin-File AUC | 0.6892 | 0.7401 | **+7.4%** |
-
-💡 **Key Insights:**
-- Alternative data improves acceptance rate by **~7 percentage points** (20% relative increase)
-- Thin-file borrowers benefit most: **+7.4% AUC improvement** with alternative features
-- Neural networks (TabNet, Wide&Deep) show competitive thin-file performance despite lower overall AUC
+| Feature Set | Features | Avg AUC | Avg Acceptance |
+|-------------|----------|---------|----------------|
+| **All** | 381 | 0.7387 | 78.0% |
+| **Alternative** | 47 | 0.7177 | 73.4% |
+| **Traditional** | 334 | 0.6985 | 69.9% |
 
 ### Business Impact
 
-**Acceptance Rate Optimization Logic:**
-1. **Input:** Model probability scores for each applicant
-2. **Target:** Maintain 5% actual bad rate (default rate)
-3. **Process:**
-   - Sort applicants by predicted default probability (ascending)
-   - Find threshold where cumulative bad rate = 5%
-   - Count applicants below threshold = acceptance rate
-4. **Output:** Maximum approval rate at fixed risk level
-
-**Example:** With LightGBM (All features):
-- Can approve **42.3% of applicants** while maintaining 5% default rate
-- vs Traditional-only model: 34.2% approval rate
-- **Net gain: 8.1 percentage points** more approvals = better financial inclusion
-
-### Output Files
-
-| Metric | Description | Location |
-|--------|-------------|----------|
-| Model comparison | AUC/KS summary table | `artifact/01_Model_results.csv` |
-| Thin-file analysis | Segment performance visualization | `artifact/03_thin_file_analysis.png` |
-| Model comparison | Side-by-side model charts | `artifact/02_model_comparison.png` |
-| EDA outputs | Correlation maps, distributions | `artifact/EDA_output/*.png` |
+| Metric | Without Alt. Data | With Alt. Data |
+|--------|-------------------|----------------|
+| Acceptance Rate | 70% | 84% |
+| Bad Rate | 5% | 5% |
+| Impact | Baseline | **+14% more approvals** |
 
 ---
 
-## 🗂️ Repository Structure
-
-```
-Credit-Risk-Alternative-Data/
-│
-├── src/
-│   ├── notebooks/              # Core analysis scripts
-│   │   ├── 01_EDA.py
-│   │   ├── 02_Data_Preprocessor.py
-│   │   ├── 03_custom_models.py
-│   │   ├── 04_trainer.py
-│   │   ├── 05_analysis.py
-│   │   ├── 06_visualize.py
-│   │   └── 07_credit_pipeline.py
-│   └── utils/
-│       └── paths.py            # Centralized path management
-│
-├── data/
-│   ├── README.md               # Data documentation
-│   ├── preprocessed_data_sample_1pct.pkl.gz
-│   └── preprocessor.pkl
-│
-├── artifact/                   # Outputs & figures
-│   ├── 01_Model_results.csv
-│   ├── 02_model_comparison.png
-│   ├── 03_thin_file_analysis.png
-│   └── EDA_output/
-│
-├── docs/                       # Detailed documentation
-│   ├── 01_EDA_DOCUMENTATION.md
-│   ├── 02_Data_Preprocessor_DOCUMENTATION.md
-│   ├── 03_customer_models_DOCUMENTATION.md
-│   ├── 04_trainer_DOCUMENTATION.md
-│   ├── 05_analysis_DOCUMENTATION.md
-│   ├── 06_visualize_DOCUMENTATION.md
-│   ├── 07_credit_pipeline_DOCUMENTATION.md
-│   └── project_proposal
-│
-├── run.py                      # Master entry point
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
-
----
-
-## 🚀 How to Run
+## Installation & Usage
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- 8GB+ RAM recommended (for full dataset)
-- GPU optional (speeds up TabNet/Wide&Deep training)
+- Python 3.8+
+- 16GB+ RAM (for processing 2.6GB of data)
 
-### Installation
+### Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/Credit-Risk-Alternative-Data.git
+# Clone the repository
+git clone https://github.com/your-repo/Credit-Risk-Alternative-Data.git
 cd Credit-Risk-Alternative-Data
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### Quick Start
+### Running the Pipeline
 
-#### Run full pipeline (all steps):
 ```bash
+# Run with all models
+python run.py
+
+# Or with environment variables for non-interactive mode
+set MODEL_SELECTION=0     # All models
+set REPROCESS=n           # Use cached preprocessed data
 python run.py
 ```
 
-#### Run individual components:
+### Model Selection Options
 
-```bash
-# Data preprocessing only
-python src/notebooks/02_Data_Preprocessor.py
-
-# Train models
-python src/notebooks/04_trainer.py
-
-# Generate visualizations
-python src/notebooks/06_visualize.py
-```
+| Option | Description |
+|--------|-------------|
+| `0` | All 8 models |
+| `99` | Quick mode (LightGBM, Random Forest, Logistic Regression) |
+| `1,3,5` | Custom selection by number |
 
 ### Expected Runtime
-- Preprocessing: ~5 minutes (1% sample)
-- Model training: ~15-20 minutes (11 models)
-- Visualization: ~2 minutes
+
+| Component | Time |
+|-----------|------|
+| Data Preprocessing | 10-15 minutes |
+| All Models Training | 20-30 minutes |
+| Quick Mode | 5-10 minutes |
 
 ---
 
-## 🧾 Dependencies
+## Documentation
 
-> See full list in `requirements.txt`
+Detailed documentation is available in the `notebooks/` folder:
 
-**Core Libraries:**
-- `pandas`, `numpy`, `scikit-learn`
-- `lightgbm`, `xgboost`, `catboost`
-- `tensorflow`, `pytorch-tabnet`
-- `matplotlib`, `seaborn`
-- `imbalanced-learn` (SMOTE)
-- `joblib`, `scipy`
+| Notebook | Description |
+|----------|-------------|
+| `00_Project_Overview.ipynb` | Complete project documentation with workflow |
+| `01_Data_Documentation.ipynb` | Detailed data file descriptions |
 
-**Optional:**
-- `shap` (for explainability analysis)
-- `mlflow` (for experiment tracking)
-
----
-
-## 📄 Documentation
-
-Detailed technical documentation available in `/docs/`:
+### Output Files
 
 | File | Description |
 |------|-------------|
-| `01_EDA_DOCUMENTATION.md` | Exploratory analysis methodology |
-| `02_Data_Preprocessor_DOCUMENTATION.md` | Feature engineering logic |
-| `03_customer_models_DOCUMENTATION.md` | TabNet & Wide&Deep implementations |
-| `04_trainer_DOCUMENTATION.md` | Training loop, CV strategy |
-| `05_analysis_DOCUMENTATION.md` | Model diagnostics, feature importance |
-| `06_visualize_DOCUMENTATION.md` | Visualization design decisions |
-| `07_credit_pipeline_DOCUMENTATION.md` | End-to-end pipeline architecture |
+| `artifact/01_Model_results.csv` | All model performance metrics |
+| `artifact/02_model_comparison.png` | 4-panel visualization |
+| `artifact/03_thin_file_analysis.png` | Thin-file vs regular comparison |
+| `artifact/EDA_output/` | Exploratory analysis visualizations |
 
 ---
 
-## 🔮 Future Work
+## Future Work
 
-- [ ] **Explainability:** Integrate SHAP analysis for regulatory compliance
-- [ ] **Experiment Tracking:** Add MLflow for reproducibility
-- [ ] **Interactive Dashboard:** Build Streamlit/Tableau app for policy simulation
-- [ ] **Real Data:** Expand to open banking datasets (FDIC, CFPB)
-- [ ] **Fairness Metrics:** Add demographic parity, equalized odds analysis
-- [ ] **Production Pipeline:** Dockerize for deployment readiness
-
----
-
-## 📬 Contact
-
-**Jenny Seongryung Kim**  
-📧 k.seongryung@wustl.edu  
-🎓 MSBA (FinTech), Washington University in St. Louis  
-🔗 [LinkedIn](https://linkedin.com/in/jenny-seongryung-kim)
+- Hyperparameter tuning with grid search
+- Feature selection to reduce dimensionality
+- Ensemble methods combining top models
+- Fairness analysis for protected groups
+- Time-based validation for realistic evaluation
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is for educational and research purposes.
 
----
+## Acknowledgments
 
-## 🙏 Acknowledgments
-
-- Home Credit Group for dataset inspiration
-- Washington University in St. Louis - Olin Business School
-- Open-source ML community (scikit-learn, LightGBM, PyTorch)
-
----
-
-**⭐ If this project helps your research, please consider giving it a star!**
+- Data: Home Credit Default Risk (Kaggle)
+- Goal: Advancing financial inclusion through alternative data
